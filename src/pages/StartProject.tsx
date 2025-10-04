@@ -84,19 +84,19 @@ export default function StartProject() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="bg-white rounded-xl shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-slate-900 mb-6 flex items-center gap-3">
-          <PlayCircle className="w-8 h-8" />
+    <div className="max-w-2xl mx-auto p-4 sm:p-6">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+          <PlayCircle className="w-6 h-6 sm:w-8 sm:h-8" />
           Start New Project
         </h1>
 
         {fmsList.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-slate-600 mb-4">No FMS templates available</p>
+          <div className="text-center py-6 sm:py-8">
+            <p className="text-slate-600 mb-4 text-sm sm:text-base">No FMS templates available</p>
             <button
               onClick={() => navigate('/create-fms')}
-              className="px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+              className="px-4 sm:px-6 py-2 sm:py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors text-sm sm:text-base"
             >
               Create FMS Template
             </button>
@@ -150,9 +150,9 @@ export default function StartProject() {
             </div>
 
             {selectedFMS && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <h3 className="font-semibold text-slate-900 mb-2">Note:</h3>
-                <p className="text-sm text-slate-600">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 sm:p-4">
+                <h3 className="font-semibold text-slate-900 mb-2 text-sm sm:text-base">Note:</h3>
+                <p className="text-xs sm:text-sm text-slate-600">
                   The first step will be created immediately and assigned to the responsible person.
                   Subsequent steps will appear on their assigned person's dashboard only after the
                   previous step is completed.
@@ -161,7 +161,7 @@ export default function StartProject() {
             )}
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-lg text-sm sm:text-base">
                 {error}
               </div>
             )}
@@ -169,9 +169,9 @@ export default function StartProject() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
-              <PlayCircle className="w-5 h-5" />
+              <PlayCircle className="w-4 h-4 sm:w-5 sm:h-5" />
               {loading ? 'Creating Project...' : 'Start Project'}
             </button>
           </form>

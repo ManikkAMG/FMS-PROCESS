@@ -80,13 +80,13 @@ const UserManagement: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
+    <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
+      <Box sx={{ my: { xs: 2, sm: 4 } }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ fontSize: { xs: '1.5rem', sm: '2rem' } }}>
           User Management
         </Typography>
 
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           <Grid item xs={12} md={5}>
             <Paper sx={{ p: 3, mb: 3 }}>
               <Typography variant="h6" gutterBottom>

@@ -110,10 +110,10 @@ export default function Logs() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <h1 className="text-3xl font-bold text-slate-900 mb-6 flex items-center gap-3">
-          <FileText className="w-8 h-8" />
+    <div className="max-w-6xl mx-auto p-4 sm:p-6">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3">
+          <FileText className="w-6 h-6 sm:w-8 sm:h-8" />
           Activity Logs
         </h1>
 
@@ -124,25 +124,25 @@ export default function Logs() {
         )}
 
         {logs.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-600">No activity logs yet</p>
+          <div className="text-center py-8 sm:py-12">
+            <FileText className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-600 text-sm sm:text-base">No activity logs yet</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {logs.map((log, index) => (
               <div
                 key={index}
-                className={`border rounded-lg p-4 ${getLogColor(log.type)} hover:shadow-md transition-shadow`}
+                className={`border rounded-lg p-3 sm:p-4 ${getLogColor(log.type)} hover:shadow-md transition-shadow`}
               >
-                <div className="flex items-start gap-4">
-                  <div className="mt-1">{getLogIcon(log.type)}</div>
+                <div className="flex items-start gap-2 sm:gap-4">
+                  <div className="mt-0.5 sm:mt-1 flex-shrink-0">{getLogIcon(log.type)}</div>
 
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-slate-900 mb-1">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-slate-900 mb-1 text-sm sm:text-base break-words">
                       {getLogTitle(log)}
                     </h3>
-                    <p className="text-sm text-slate-600 mb-2">
+                    <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2 break-words">
                       {getLogDescription(log)}
                     </p>
                     <p className="text-xs text-slate-500">
@@ -150,7 +150,7 @@ export default function Logs() {
                     </p>
                   </div>
 
-                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  <div className="text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:block whitespace-nowrap">
                     {log.type.replace('_', ' ')}
                   </div>
                 </div>
