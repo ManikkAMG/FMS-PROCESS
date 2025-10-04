@@ -56,5 +56,8 @@ export interface Log {
 
 export interface User {
   username: string;
-  loginTime: string;
+  name: string;
+  role: string;
+  department: string;
+  loginTime?: string;
 }

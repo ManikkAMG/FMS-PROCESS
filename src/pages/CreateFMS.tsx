@@ -19,12 +19,27 @@ export default function CreateFMS() {
   const [error, setError] = useState('');
   const [showDiagram, setShowDiagram] = useState(false);
   const [diagramSvg, setDiagramSvg] = useState('');
+  const [departments, setDepartments] = useState<string[]>([]);
 
   useEffect(() => {
     if (showDiagram && steps.every(s => s.what)) {
       generateDiagram();
     }
+    
+    // Load departments for WHO dropdown
+    loadDepartments();
   }, [showDiagram, steps]);
+  
+  const loadDepartments = async () => {
+    try {
+      const response = await api.getAllDepartments();
+      if (response.success) {
+        setDepartments(response.departments);
+      }
+    } catch (err) {
+      console.error('Error loading departments:', err);
+    }
+  };
 
   const generateDiagram = async () => {
     const mermaidCode = `
@@ -181,14 +196,19 @@ graph LR
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       WHO (Responsible Person)
                     </label>
-                    <input
-                      type="text"
+                    <select
                       value={step.who}
                       onChange={(e) => updateStep(index, 'who', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all outline-none"
-                      placeholder="Who will do it?"
                       required
-                    />
+                    >
+                      <option value="">Select Department</option>
+                      {departments.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>

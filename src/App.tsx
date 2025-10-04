@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import CreateFMS from './pages/CreateFMS';
 import StartProject from './pages/StartProject';
 import Logs from './pages/Logs';
+import UserManagement from './pages/UserManagement';
 
 function App() {
   return (
@@ -50,6 +51,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Logs />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <UserManagement />
                 </Layout>
               </PrivateRoute>
             }

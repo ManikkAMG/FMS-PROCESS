@@ -22,6 +22,7 @@ export default function Layout({ children }: LayoutProps) {
     { path: '/create-fms', label: 'Create FMS', icon: GitBranch },
     { path: '/start-project', label: 'Start Project', icon: PlayCircle },
     { path: '/logs', label: 'Logs', icon: FileText },
+    { path: '/users', label: 'Users', icon: FileText },
   ];
 
   return (

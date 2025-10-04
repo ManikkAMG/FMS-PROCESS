@@ -1,54 +1,63 @@
-# Google Apps Script Backend Setup
+// # Google Apps Script Backend Setup
 
-## Step 1: Create a New Google Sheet
+// ## Step 1: Create a New Google Sheet
 
-1. Go to [Google Sheets](https://sheets.google.com)
-2. Create a new spreadsheet
-3. Name it "FMS System Database"
+// 1. Go to [Google Sheets](https://sheets.google.com)
+// 2. Create a new spreadsheet
+// 3. Name it "FMS System Database"
+// npm install @mui/material @emotion/react @emotion/styled
+// ## Step 2: Create Three Sheets
 
-## Step 2: Create Two Sheets
+// ### Sheet 1: FMS_MASTER
+// Create a sheet named `FMS_MASTER` with these columns (Row 1):
+// - FMS_ID
+// - FMS_Name
+// - Step_No
+// - WHAT
+// - WHO
+// - HOW
+// - WHEN
+// - Created_By
+// - Created_On
+// - Last_Updated_By
+// - Last_Updated_On
 
-### Sheet 1: FMS_MASTER
-Create a sheet named `FMS_MASTER` with these columns (Row 1):
-- FMS_ID
-- FMS_Name
-- Step_No
-- WHAT
-- WHO
-- HOW
-- WHEN
-- Created_By
-- Created_On
-- Last_Updated_By
-- Last_Updated_On
+// ### Sheet 2: FMS_PROGRESS
+// Create a sheet named `FMS_PROGRESS` with these columns (Row 1):
+// - Project_ID
+// - FMS_ID
+// - Project_Name
+// - Step_No
+// - WHAT
+// - WHO
+// - HOW
+// - Planned_Due_Date
+// - Actual_Completed_On
+// - Status
+// - Created_By
+// - Created_On
+// - Last_Updated_By
+// - Last_Updated_On
 
-### Sheet 2: FMS_PROGRESS
-Create a sheet named `FMS_PROGRESS` with these columns (Row 1):
-- Project_ID
-- FMS_ID
-- Project_Name
-- Step_No
-- WHAT
-- WHO
-- HOW
-- Planned_Due_Date
-- Actual_Completed_On
-- Status
-- Created_By
-- Created_On
-- Last_Updated_By
-- Last_Updated_On
+// ### Sheet 3: Users
+// Create a sheet named `Users` with these columns (Row 1):
+// - Username
+// - Password
+// - Name
+// - Role
+// - Department
+// - Last_Login
 
-## Step 3: Add Apps Script Code
+// ## Step 3: Add Apps Script Code
 
-1. In your Google Sheet, click **Extensions** > **Apps Script**
-2. Delete any existing code
-3. Copy and paste the following code:
+// 1. In your Google Sheet, click **Extensions** > **Apps Script**
+// 2. Delete any existing code
+// 3. Copy and paste the following code:
 
-```javascript
-// ============================================
-// FMS Google Apps Script Web App Backend
-// ============================================
+// ```javascript
+// // ============================================
+// // FMS Google Apps Script Web App Backend
+// // ============================================
 
 function doGet(e) {
   return ContentService.createTextOutput(JSON.stringify({
@@ -67,6 +76,9 @@ function doPost(e) {
     switch(action) {
       case 'login':
         result = handleLogin(params);
+        break;
+      case 'getUsers':
+        result = getUsers();
         break;
       case 'createFMS':
         result = createFMS(params);
@@ -107,22 +119,87 @@ function doPost(e) {
   }
 }
 
-function handleLogin(params) {
-  const username = params.username;
-  const password = params.password;
 
-  // Simple authentication - same credentials for everyone
-  if (password === 'fms2024') {
-    return {
-      success: true,
-      user: {
-        username: username,
-        loginTime: new Date().toISOString()
-      }
-    };
+function handleLogin(params) {
+  const username = (params.username || '').toString();
+  const password = (params.password || '').toString();
+
+  if (!username || !password) {
+    return { success: false, message: 'Missing username or password' };
   }
 
-  return { success: false, message: 'Invalid credentials' };
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const usersSheet = ss.getSheetByName('Users');
+  if (!usersSheet) {
+    return { success: false, message: 'Users sheet not found' };
+  }
+
+  const data = usersSheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return { success: false, message: 'No users configured' };
+  }
+
+  // Columns: Username(0), Password(1), Name(2), Role(3), Department(4), Last_Login(5)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const rowUsername = String(row[0]);
+    const rowPassword = String(row[1]);
+
+    if (rowUsername === username) {
+      if (rowPassword === password) {
+        const name = row[2] || '';
+        const role = row[3] || '';
+        const department = row[4] || '';
+        const timestamp = new Date().toISOString();
+
+        // Update Last_Login column (column index 6 in sheet, since sheets are 1-based)
+        usersSheet.getRange(i + 1, 6).setValue(timestamp);
+
+        return {
+          success: true,
+          user: {
+            username: username,
+            name: name,
+            role: role,
+            department: department,
+            lastLogin: timestamp
+          }
+        };
+      } else {
+        return { success: false, message: 'Invalid credentials' };
+      }
+    }
+  }
+
+  return { success: false, message: 'User not found' };
+}
+
+/* New: Return list of users (excluding passwords) */
+function getUsers() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const usersSheet = ss.getSheetByName('Users');
+  if (!usersSheet) {
+    return { success: false, message: 'Users sheet not found' };
+  }
+
+  const data = usersSheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    return { success: true, users: [] };
+  }
+
+  const users = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    users.push({
+      username: row[0],
+      name: row[2],
+      role: row[3],
+      department: row[4],
+      lastLogin: row[5] || ''
+    });
+  }
+
+  return { success: true, users: users };
 }
 
 function createFMS(params) {
@@ -510,40 +587,40 @@ function getAllLogs() {
     logs: logs
   };
 }
-```
+// ```
 
-## Step 4: Deploy as Web App
+// ## Step 4: Deploy as Web App
 
-1. Click the **Deploy** button (top right) > **New deployment**
-2. Click the gear icon next to "Select type" > Choose **Web app**
-3. Fill in the details:
-   - Description: "FMS System API"
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-4. Click **Deploy**
-5. **Copy the Web App URL** - you'll need this for the frontend
-6. Click **Done**
+// 1. Click the **Deploy** button (top right) > **New deployment**
+// 2. Click the gear icon next to "Select type" > Choose **Web app**
+// 3. Fill in the details:
+//    - Description: "FMS System API"
+//    - Execute as: **Me**
+//    - Who has access: **Anyone**
+// 4. Click **Deploy**
+// 5. **Copy the Web App URL** - you'll need this for the frontend
+// 6. Click **Done**
 
-## Step 5: Configure Frontend
+// ## Step 5: Configure Frontend
 
-1. Open your project's `.env` file
-2. Add the following line with your Web App URL:
-   ```
-   VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-   ```
-3. Replace `YOUR_DEPLOYMENT_ID` with the actual deployment ID from your Web App URL
+// 1. Open your project's `.env` file
+// 2. Add the following line with your Web App URL:
+//    ```
+//    VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+//    ```
+// 3. Replace `YOUR_DEPLOYMENT_ID` with the actual deployment ID from your Web App URL
 
-## Default Login Credentials
+// ## Default Login Credentials
 
-- Password: `fms2024` (works with any username)
-- The system tracks who creates/edits based on the username entered
+// - Password: `fms2024` (works with any username)
+// - The system tracks who creates/edits based on the username entered
 
-## Testing the API
+// ## Testing the API
 
-You can test if the API is working by visiting your Web App URL in a browser. You should see:
-```json
-{
-  "status": "success",
-  "message": "FMS API is running"
-}
-```
+// You can test if the API is working by visiting your Web App URL in a browser. You should see:
+// ```json
+// {
+//   "status": "success",
+//   "message": "FMS API is running"
+// }
+// ```

@@ -24,12 +24,14 @@ export default function StartProject() {
 
   const loadFMSList = async () => {
     try {
+      setLoadingFMS(true);
       const result = await api.getAllFMS();
       if (result.success) {
-        setFmsList(result.fmsList);
+        setFmsList(result.fmsList || []);
       }
     } catch (err) {
       setError('Failed to load FMS templates');
+      console.error('Error loading FMS templates:', err);
     } finally {
       setLoadingFMS(false);
     }
