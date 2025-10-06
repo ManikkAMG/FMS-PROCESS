@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CreateFMS from './pages/CreateFMS';
+import ViewAllFMS from './pages/ViewAllFMS';
 import StartProject from './pages/StartProject';
 import Logs from './pages/Logs';
 import UserManagement from './pages/UserManagement';
@@ -31,6 +32,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <CreateFMS />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/view-fms"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <ViewAllFMS />
                 </Layout>
               </PrivateRoute>
             }

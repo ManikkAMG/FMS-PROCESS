@@ -1,63 +1,76 @@
-// # Google Apps Script Backend Setup
+# Google Apps Script Backend Setup
 
-// ## Step 1: Create a New Google Sheet
+## Overview
 
-// 1. Go to [Google Sheets](https://sheets.google.com)
-// 2. Create a new spreadsheet
-// 3. Name it "FMS System Database"
-// npm install @mui/material @emotion/react @emotion/styled
-// ## Step 2: Create Three Sheets
+This FMS (Flow Management System) uses Google Sheets as a database and Google Apps Script as the backend API. Follow these steps to set up your backend.
 
-// ### Sheet 1: FMS_MASTER
-// Create a sheet named `FMS_MASTER` with these columns (Row 1):
-// - FMS_ID
-// - FMS_Name
-// - Step_No
-// - WHAT
-// - WHO
-// - HOW
-// - WHEN
-// - Created_By
-// - Created_On
-// - Last_Updated_By
-// - Last_Updated_On
+## Step 1: Create a New Google Sheet
 
-// ### Sheet 2: FMS_PROGRESS
-// Create a sheet named `FMS_PROGRESS` with these columns (Row 1):
-// - Project_ID
-// - FMS_ID
-// - Project_Name
-// - Step_No
-// - WHAT
-// - WHO
-// - HOW
-// - Planned_Due_Date
-// - Actual_Completed_On
-// - Status
-// - Created_By
-// - Created_On
-// - Last_Updated_By
-// - Last_Updated_On
+1. Go to [Google Sheets](https://sheets.google.com)
+2. Create a new spreadsheet
+3. Name it "FMS System Database"
 
-// ### Sheet 3: Users
-// Create a sheet named `Users` with these columns (Row 1):
-// - Username
-// - Password
-// - Name
-// - Role
-// - Department
-// - Last_Login
+## Step 2: Create Three Sheets
 
-// ## Step 3: Add Apps Script Code
+### Sheet 1: FMS_MASTER
 
-// 1. In your Google Sheet, click **Extensions** > **Apps Script**
-// 2. Delete any existing code
-// 3. Copy and paste the following code:
+Create a sheet named `FMS_MASTER` with these columns (Row 1):
+- FMS_ID
+- FMS_Name
+- Step_No
+- WHAT
+- WHO
+- HOW
+- WHEN
+- When_Unit (new)
+- When_Days (new)
+- When_Hours (new)
+- Created_By
+- Created_On
+- Last_Updated_By
+- Last_Updated_On
 
-// ```javascript
-// // ============================================
-// // FMS Google Apps Script Web App Backend
-// // ============================================
+### Sheet 2: FMS_PROGRESS
+
+Create a sheet named `FMS_PROGRESS` with these columns (Row 1):
+- Project_ID
+- FMS_ID
+- Project_Name
+- Step_No
+- WHAT
+- WHO
+- HOW
+- Planned_Due_Date
+- Actual_Completed_On
+- Status
+- Completed_By (new)
+- Is_First_Step (new)
+- Created_By
+- Created_On
+- Last_Updated_By
+- Last_Updated_On
+
+### Sheet 3: Users
+
+Create a sheet named `Users` with these columns (Row 1):
+- Username
+- Password
+- Name
+- Role
+- Department
+- Last_Login
+
+## Step 3: Add Apps Script Code
+
+1. In your Google Sheet, click **Extensions** > **Apps Script**
+2. Delete any existing code
+3. Copy and paste the following code:
+
+```javascript
+// ============================================
+// FMS Google Apps Script Web App Backend
+// Enhanced Version with Time Tracking
+// ============================================
 
 function doGet(e) {
   return ContentService.createTextOutput(JSON.stringify({
@@ -119,7 +132,6 @@ function doPost(e) {
   }
 }
 
-
 function handleLogin(params) {
   const username = (params.username || '').toString();
   const password = (params.password || '').toString();
@@ -139,7 +151,6 @@ function handleLogin(params) {
     return { success: false, message: 'No users configured' };
   }
 
-  // Columns: Username(0), Password(1), Name(2), Role(3), Department(4), Last_Login(5)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const rowUsername = String(row[0]);
@@ -152,7 +163,6 @@ function handleLogin(params) {
         const department = row[4] || '';
         const timestamp = new Date().toISOString();
 
-        // Update Last_Login column (column index 6 in sheet, since sheets are 1-based)
         usersSheet.getRange(i + 1, 6).setValue(timestamp);
 
         return {
@@ -174,7 +184,6 @@ function handleLogin(params) {
   return { success: false, message: 'User not found' };
 }
 
-/* New: Return list of users (excluding passwords) */
 function getUsers() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const usersSheet = ss.getSheetByName('Users');
@@ -221,6 +230,9 @@ function createFMS(params) {
       step.who,
       step.how,
       step.when,
+      step.whenUnit || 'days',
+      step.whenDays || 0,
+      step.whenHours || 0,
       username,
       timestamp,
       username,
@@ -257,8 +269,8 @@ function getAllFMS() {
         fmsId: fmsId,
         fmsName: fmsName,
         stepCount: 0,
-        createdBy: row[7],
-        createdOn: row[8]
+        createdBy: row[10],
+        createdOn: row[11]
       };
     }
 
@@ -286,7 +298,10 @@ function getFMSById(fmsId) {
         what: row[3],
         who: row[4],
         how: row[5],
-        when: row[6]
+        when: row[6],
+        whenUnit: row[7] || 'days',
+        whenDays: row[8] || 0,
+        whenHours: row[9] || 0
       });
     }
   }
@@ -312,7 +327,6 @@ function createProject(params) {
   const username = params.username;
   const timestamp = new Date().toISOString();
 
-  // Get all steps from FMS_MASTER
   const masterData = masterSheet.getDataRange().getValues();
   const steps = [];
 
@@ -324,18 +338,23 @@ function createProject(params) {
         what: row[3],
         who: row[4],
         how: row[5],
-        when: row[6]
+        when: row[6],
+        whenUnit: row[7] || 'days',
+        whenDays: row[8] || 0,
+        whenHours: row[9] || 0
       });
     }
   }
 
   steps.sort((a, b) => a.stepNo - b.stepNo);
 
-  // Calculate due date for first step only
   let currentDate = new Date(projectStartDate);
-  currentDate.setDate(currentDate.getDate() + parseInt(steps[0].when));
+  const whenDays = steps[0].whenDays || Math.floor(steps[0].when);
+  const whenHours = steps[0].whenHours || Math.round((steps[0].when % 1) * 24);
 
-  // Create first step in FMS_PROGRESS
+  currentDate.setDate(currentDate.getDate() + parseInt(whenDays));
+  currentDate.setHours(currentDate.getHours() + parseInt(whenHours));
+
   progressSheet.appendRow([
     projectId,
     fmsId,
@@ -347,6 +366,8 @@ function createProject(params) {
     currentDate.toISOString(),
     '',
     'Pending',
+    '',
+    'true',
     username,
     timestamp,
     username,
@@ -392,7 +413,9 @@ function getAllProjects() {
       how: row[6],
       plannedDueDate: row[7],
       actualCompletedOn: row[8],
-      status: row[9]
+      status: row[9],
+      completedBy: row[10] || '',
+      isFirstStep: row[11] === 'true' || row[11] === true
     });
   }
 
@@ -426,7 +449,9 @@ function getProjectsByUser(username) {
         how: row[6],
         plannedDueDate: row[7],
         actualCompletedOn: row[8],
-        status: row[9]
+        status: row[9],
+        completedBy: row[10] || '',
+        isFirstStep: row[11] === 'true' || row[11] === true
       });
     }
   }
@@ -447,21 +472,19 @@ function updateTaskStatus(params) {
   const username = params.username;
   const timestamp = new Date().toISOString();
 
-  // Update current task
   progressSheet.getRange(rowIndex, 9).setValue(status === 'Done' ? timestamp : '');
   progressSheet.getRange(rowIndex, 10).setValue(status);
-  progressSheet.getRange(rowIndex, 13).setValue(username);
-  progressSheet.getRange(rowIndex, 14).setValue(timestamp);
+  progressSheet.getRange(rowIndex, 11).setValue(status === 'Done' ? username : '');
+  progressSheet.getRange(rowIndex, 15).setValue(username);
+  progressSheet.getRange(rowIndex, 16).setValue(timestamp);
 
-  // If status is 'Done', create next step
   if (status === 'Done') {
-    const currentRow = progressSheet.getRange(rowIndex, 1, 1, 14).getValues()[0];
+    const currentRow = progressSheet.getRange(rowIndex, 1, 1, 16).getValues()[0];
     const projectId = currentRow[0];
     const fmsId = currentRow[1];
     const projectName = currentRow[2];
     const currentStepNo = currentRow[3];
 
-    // Get all steps from FMS_MASTER for this FMS
     const masterData = masterSheet.getDataRange().getValues();
     const allSteps = [];
 
@@ -473,22 +496,22 @@ function updateTaskStatus(params) {
           what: row[3],
           who: row[4],
           how: row[5],
-          when: row[6]
+          when: row[6],
+          whenDays: row[8] || Math.floor(row[6]),
+          whenHours: row[9] || Math.round((row[6] % 1) * 24)
         });
       }
     }
 
     allSteps.sort((a, b) => a.stepNo - b.stepNo);
 
-    // Find next step
     const nextStep = allSteps.find(s => s.stepNo === currentStepNo + 1);
 
     if (nextStep) {
-      // Calculate due date based on current completion date
       const completionDate = new Date(timestamp);
-      completionDate.setDate(completionDate.getDate() + parseInt(nextStep.when));
+      completionDate.setDate(completionDate.getDate() + parseInt(nextStep.whenDays));
+      completionDate.setHours(completionDate.getHours() + parseInt(nextStep.whenHours));
 
-      // Create next step
       progressSheet.appendRow([
         projectId,
         fmsId,
@@ -500,6 +523,8 @@ function updateTaskStatus(params) {
         completionDate.toISOString(),
         '',
         'Pending',
+        '',
+        'false',
         username,
         timestamp,
         username,
@@ -521,7 +546,6 @@ function getAllLogs() {
 
   const logs = [];
 
-  // Get FMS creation logs
   const masterData = masterSheet.getDataRange().getValues();
   const fmsCreations = {};
 
@@ -533,15 +557,14 @@ function getAllLogs() {
         type: 'FMS_CREATED',
         fmsId: fmsId,
         fmsName: row[1],
-        createdBy: row[7],
-        createdOn: row[8]
+        createdBy: row[10],
+        createdOn: row[11]
       };
     }
   }
 
   logs.push(...Object.values(fmsCreations));
 
-  // Get project creation logs
   const progressData = progressSheet.getDataRange().getValues();
   const projectCreations = {};
 
@@ -553,13 +576,12 @@ function getAllLogs() {
         type: 'PROJECT_CREATED',
         projectId: projectId,
         projectName: row[2],
-        createdBy: row[10],
-        createdOn: row[11]
+        createdBy: row[12],
+        createdOn: row[13]
       };
     }
 
-    // Task updates
-    if (row[12] !== row[10]) {
+    if (row[14] !== row[12]) {
       logs.push({
         type: 'TASK_UPDATED',
         projectId: projectId,
@@ -567,15 +589,14 @@ function getAllLogs() {
         stepNo: row[3],
         what: row[4],
         status: row[9],
-        updatedBy: row[12],
-        updatedOn: row[13]
+        updatedBy: row[14],
+        updatedOn: row[15]
       });
     }
   }
 
   logs.push(...Object.values(projectCreations));
 
-  // Sort by date
   logs.sort((a, b) => {
     const dateA = new Date(a.createdOn || a.updatedOn);
     const dateB = new Date(b.createdOn || b.updatedOn);
@@ -587,40 +608,87 @@ function getAllLogs() {
     logs: logs
   };
 }
-// ```
+```
 
-// ## Step 4: Deploy as Web App
+## Step 4: Deploy as Web App
 
-// 1. Click the **Deploy** button (top right) > **New deployment**
-// 2. Click the gear icon next to "Select type" > Choose **Web app**
-// 3. Fill in the details:
-//    - Description: "FMS System API"
-//    - Execute as: **Me**
-//    - Who has access: **Anyone**
-// 4. Click **Deploy**
-// 5. **Copy the Web App URL** - you'll need this for the frontend
-// 6. Click **Done**
+1. Click the **Deploy** button (top right) > **New deployment**
+2. Click the gear icon next to "Select type" > Choose **Web app**
+3. Fill in the details:
+   - Description: "FMS System API - Enhanced Version"
+   - Execute as: **Me**
+   - Who has access: **Anyone**
+4. Click **Deploy**
+5. **Copy the Web App URL** - you'll need this for the frontend
+6. Click **Done**
 
-// ## Step 5: Configure Frontend
+## Step 5: Configure Frontend
 
-// 1. Open your project's `.env` file
-// 2. Add the following line with your Web App URL:
-//    ```
-//    VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-//    ```
-// 3. Replace `YOUR_DEPLOYMENT_ID` with the actual deployment ID from your Web App URL
+1. Open your project's `.env` file
+2. Add or update the following line with your Web App URL:
+   ```
+   VITE_APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
+   ```
+3. Replace `YOUR_DEPLOYMENT_ID` with the actual deployment ID from your Web App URL
 
-// ## Default Login Credentials
+## New Features in This Version
 
-// - Password: `fms2024` (works with any username)
-// - The system tracks who creates/edits based on the username entered
+### Enhanced Time Tracking
+- Support for Days, Hours, and Days+Hours duration units
+- No minimum time restriction (can be 0)
+- More granular scheduling
 
-// ## Testing the API
+### Improved Task Management
+- First-level task indicators
+- Completion tracking (who completed what)
+- On-time/Late status tracking
+- Overdue indicators
 
-// You can test if the API is working by visiting your Web App URL in a browser. You should see:
-// ```json
-// {
-//   "status": "success",
-//   "message": "FMS API is running"
-// }
-// ```
+### Better Project Visibility
+- User-filtered project views
+- Card-based project displays
+- Progress bars showing completion percentage
+- Expandable project details
+
+## Default Login Credentials
+
+Add test users to your Users sheet:
+- Username: `admin`
+- Password: `fms2024`
+- Name: `Administrator`
+- Role: `Admin`
+- Department: `Management`
+
+## Testing the API
+
+Visit your Web App URL in a browser. You should see:
+```json
+{
+  "status": "success",
+  "message": "FMS API is running"
+}
+```
+
+## Troubleshooting
+
+### Configuration Error
+If you see "API URL not configured" on login:
+1. Check your `.env` file has the correct `VITE_APPS_SCRIPT_URL`
+2. Restart your dev server after updating `.env`
+
+### Login Issues
+1. Verify Users sheet has the correct column headers
+2. Check that username and password match exactly
+3. Ensure the Google Apps Script is deployed and accessible
+
+### Task Updates Not Working
+1. Verify FMS_PROGRESS sheet has all required columns
+2. Check that the Google Apps Script has the latest code
+3. Ensure project was created after updating to the enhanced version
+
+## Support
+
+For issues or questions, check:
+1. Browser console for error messages
+2. Google Apps Script execution logs (View > Logs)
+3. Sheet data for consistency

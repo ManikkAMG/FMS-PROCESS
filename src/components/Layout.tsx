@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LogOut, Workflow, LayoutDashboard, GitBranch, PlayCircle, FileText } from 'lucide-react';
+import { LogOut, Workflow, LayoutDashboard, GitBranch, PlayCircle, FileText, List, Users } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface LayoutProps {
@@ -20,9 +20,10 @@ export default function Layout({ children }: LayoutProps) {
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/create-fms', label: 'Create FMS', icon: GitBranch },
+    { path: '/view-fms', label: 'View FMS', icon: List },
     { path: '/start-project', label: 'Start Project', icon: PlayCircle },
     { path: '/logs', label: 'Logs', icon: FileText },
-    { path: '/users', label: 'Users', icon: FileText },
+    { path: '/users', label: 'Users', icon: Users },
   ];
 
   return (

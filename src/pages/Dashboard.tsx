@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Loader, Calendar, User, ListChecks } from 'lucide-react';
+import { CheckSquare, Loader, Calendar, User, ListChecks, Clock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { ProjectTask, Project } from '../types';
@@ -28,17 +28,39 @@ export default function Dashboard() {
       ]);
 
       if (tasksResult.success) {
-        setMyTasks(tasksResult.tasks);
+        const enhancedTasks = tasksResult.tasks.map((task: ProjectTask) => ({
+          ...task,
+          isOverdue: isTaskOverdue(task),
+          completionStatus: getCompletionStatus(task),
+        }));
+        setMyTasks(enhancedTasks);
       }
 
       if (projectsResult.success) {
-        setAllProjects(projectsResult.projects);
+        const userProjects = projectsResult.projects.filter((project: Project) =>
+          project.tasks.some((task) => task.who === user!.username || task.who === user!.department)
+        );
+        setAllProjects(userProjects);
       }
     } catch (err) {
       setError('Failed to load data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const isTaskOverdue = (task: ProjectTask): boolean => {
+    if (task.status === 'Done') return false;
+    const dueDate = new Date(task.plannedDueDate);
+    const now = new Date();
+    return dueDate < now;
+  };
+
+  const getCompletionStatus = (task: ProjectTask): 'on-time' | 'late' | undefined => {
+    if (task.status !== 'Done' || !task.actualCompletedOn) return undefined;
+    const dueDate = new Date(task.plannedDueDate);
+    const completedDate = new Date(task.actualCompletedOn);
+    return completedDate <= dueDate ? 'on-time' : 'late';
   };
 
   const updateStatus = async (task: ProjectTask, newStatus: string) => {
@@ -67,6 +89,8 @@ export default function Dashboard() {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
       return 'N/A';
@@ -82,6 +106,12 @@ export default function Dashboard() {
       default:
         return 'bg-slate-100 text-slate-800 border-slate-200';
     }
+  };
+
+  const calculateProgress = (tasks: ProjectTask[]): number => {
+    if (tasks.length === 0) return 0;
+    const completedTasks = tasks.filter((t) => t.status === 'Done').length;
+    return Math.round((completedTasks / tasks.length) * 100);
   };
 
   if (loading) {
@@ -151,7 +181,11 @@ export default function Dashboard() {
                 {myTasks.map((task) => (
                   <div
                     key={`${task.projectId}-${task.stepNo}`}
-                    className="border border-slate-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
+                    className={`border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow ${
+                      task.isOverdue && task.status !== 'Done'
+                        ? 'border-red-300 bg-red-50'
+                        : 'border-slate-200'
+                    }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
                       <div className="flex-1">
@@ -160,13 +194,32 @@ export default function Dashboard() {
                         </h3>
                         <p className="text-slate-600 mt-1 text-sm sm:text-base">{task.what}</p>
                       </div>
-                      <span
-                        className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(
-                          task.status
-                        )} self-start`}
-                      >
-                        {task.status}
-                      </span>
+                      <div className="flex gap-2 items-center">
+                        <span
+                          className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(
+                            task.status
+                          )}`}
+                        >
+                          {task.status}
+                        </span>
+                        {task.isOverdue && task.status !== 'Done' && (
+                          <span className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border bg-red-100 text-red-800 border-red-200 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Overdue
+                          </span>
+                        )}
+                        {task.status === 'Done' && task.completionStatus && (
+                          <span
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${
+                              task.completionStatus === 'on-time'
+                                ? 'bg-green-100 text-green-800 border-green-200'
+                                : 'bg-orange-100 text-orange-800 border-orange-200'
+                            }`}
+                          >
+                            {task.completionStatus === 'on-time' ? 'On Time' : 'Late'}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4 text-xs sm:text-sm">
@@ -191,26 +244,35 @@ export default function Dashboard() {
 
                     {task.status !== 'Done' && (
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <button
-                          onClick={() => updateStatus(task, 'In Progress')}
-                          disabled={updating === task.rowIndex || task.status === 'In Progress'}
-                          className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm w-full sm:w-auto"
-                        >
-                          {updating === task.rowIndex ? 'Updating...' : 'Start'}
-                        </button>
-                        <button
-                          onClick={() => updateStatus(task, 'Done')}
-                          disabled={updating === task.rowIndex}
-                          className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm w-full sm:w-auto"
-                        >
-                          {updating === task.rowIndex ? 'Updating...' : 'Complete'}
-                        </button>
+                        {task.isFirstStep && task.status === 'Pending' && (
+                          <button
+                            onClick={() => updateStatus(task, 'In Progress')}
+                            disabled={updating === task.rowIndex}
+                            className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm w-full sm:w-auto"
+                          >
+                            {updating === task.rowIndex ? 'Updating...' : 'Start'}
+                          </button>
+                        )}
+                        {task.status === 'In Progress' && (
+                          <button
+                            onClick={() => updateStatus(task, 'Done')}
+                            disabled={updating === task.rowIndex}
+                            className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm w-full sm:w-auto"
+                          >
+                            {updating === task.rowIndex ? 'Updating...' : 'Complete'}
+                          </button>
+                        )}
                       </div>
                     )}
 
                     {task.actualCompletedOn && (
-                      <div className="mt-2 text-xs sm:text-sm text-green-600">
-                        Completed on: {formatDate(task.actualCompletedOn)}
+                      <div className="mt-2 text-xs sm:text-sm">
+                        <span className="text-green-600">
+                          Completed on: {formatDate(task.actualCompletedOn)}
+                        </span>
+                        {task.completedBy && (
+                          <span className="text-slate-600 ml-2">by {task.completedBy}</span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -225,7 +287,7 @@ export default function Dashboard() {
             {allProjects.length === 0 ? (
               <div className="text-center py-8 sm:py-12">
                 <ListChecks className="w-12 h-12 sm:w-16 sm:h-16 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600 mb-4 text-sm sm:text-base">No projects started yet</p>
+                <p className="text-slate-600 mb-4 text-sm sm:text-base">No projects available</p>
                 <button
                   onClick={() => navigate('/start-project')}
                   className="px-4 sm:px-6 py-2 sm:py-3 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors text-sm sm:text-base"
@@ -234,65 +296,116 @@ export default function Dashboard() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-4 sm:space-y-6">
-                {allProjects.map((project) => (
-                  <div key={project.projectId} className="border border-slate-200 rounded-lg p-3 sm:p-6">
-                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-3 sm:mb-4">
-                      {project.projectName}
-                    </h3>
+              <div className="grid grid-cols-1 gap-4">
+                {allProjects.map((project) => {
+                  const progress = calculateProgress(project.tasks);
+                  const [expanded, setExpanded] = useState(false);
 
-                    <div className="overflow-x-auto -mx-3 sm:mx-0">
-                      <table className="w-full text-xs sm:text-sm min-w-max">
-                        <thead className="bg-slate-50">
-                          <tr>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-700 whitespace-nowrap">
-                              Step
-                            </th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-700 whitespace-nowrap">
-                              Task
-                            </th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-700 whitespace-nowrap">
-                              Assigned To
-                            </th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-700 whitespace-nowrap">
-                              Status
-                            </th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-700 whitespace-nowrap">
-                              Due Date
-                            </th>
-                            <th className="px-2 sm:px-4 py-2 sm:py-3 text-left font-semibold text-slate-700 whitespace-nowrap">
-                              Completed
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {project.tasks.map((task) => (
-                            <tr key={task.stepNo} className="hover:bg-slate-50">
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 font-medium">{task.stepNo}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 max-w-xs truncate">{task.what}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">{task.who}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3">
-                                <span
-                                  className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                                    task.status
-                                  )} whitespace-nowrap`}
+                  return (
+                    <div
+                      key={project.projectId}
+                      className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow"
+                    >
+                      <div
+                        className="p-4 bg-slate-50 cursor-pointer"
+                        onClick={() => setExpanded(!expanded)}
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-bold text-slate-900">{project.projectName}</h3>
+                          <span className="text-sm text-slate-600">
+                            {project.tasks.filter((t) => t.status === 'Done').length} /{' '}
+                            {project.tasks.length} tasks
+                          </span>
+                        </div>
+
+                        <div className="w-full bg-slate-200 rounded-full h-2.5 mb-2">
+                          <div
+                            className="bg-slate-900 h-2.5 rounded-full transition-all duration-300"
+                            style={{ width: `${progress}%` }}
+                          ></div>
+                        </div>
+
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-600">{progress}% Complete</span>
+                          <button className="text-slate-600 hover:text-slate-900">
+                            {expanded ? 'Hide Details' : 'Show Details'}
+                          </button>
+                        </div>
+                      </div>
+
+                      {expanded && (
+                        <div className="p-4 bg-white border-t border-slate-200">
+                          <div className="space-y-3">
+                            {project.tasks.map((task) => {
+                              const taskOverdue = isTaskOverdue(task);
+                              const taskCompletionStatus = getCompletionStatus(task);
+
+                              return (
+                                <div
+                                  key={task.stepNo}
+                                  className={`border rounded-lg p-3 ${
+                                    taskOverdue && task.status !== 'Done'
+                                      ? 'border-red-300 bg-red-50'
+                                      : 'border-slate-200 bg-slate-50'
+                                  }`}
                                 >
-                                  {task.status}
-                                </span>
-                              </td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">{formatDate(task.plannedDueDate)}</td>
-                              <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
-                                {task.actualCompletedOn
-                                  ? formatDate(task.actualCompletedOn)
-                                  : '-'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-start gap-2">
+                                      <div className="flex-shrink-0 w-6 h-6 bg-slate-900 text-white rounded-full flex items-center justify-center font-semibold text-xs">
+                                        {task.stepNo}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-slate-900">{task.what}</p>
+                                        <p className="text-xs text-slate-600 mt-1">
+                                          Assigned to: {task.who}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex flex-col gap-1 items-end">
+                                      <span
+                                        className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                                          task.status
+                                        )}`}
+                                      >
+                                        {task.status}
+                                      </span>
+                                      {taskOverdue && task.status !== 'Done' && (
+                                        <span className="px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-800 border-red-200 flex items-center gap-1">
+                                          <Clock className="w-3 h-3" />
+                                          Overdue
+                                        </span>
+                                      )}
+                                      {task.status === 'Done' && taskCompletionStatus && (
+                                        <span
+                                          className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                                            taskCompletionStatus === 'on-time'
+                                              ? 'bg-green-100 text-green-800 border-green-200'
+                                              : 'bg-orange-100 text-orange-800 border-orange-200'
+                                          }`}
+                                        >
+                                          {taskCompletionStatus === 'on-time' ? 'On Time' : 'Late'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-slate-600 mt-2">
+                                    <div>Due: {formatDate(task.plannedDueDate)}</div>
+                                    {task.actualCompletedOn && (
+                                      <div className="text-green-600">
+                                        Completed: {formatDate(task.actualCompletedOn)}
+                                        {task.completedBy && ` by ${task.completedBy}`}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

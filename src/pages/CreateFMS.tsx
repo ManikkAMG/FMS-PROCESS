@@ -13,7 +13,7 @@ export default function CreateFMS() {
   const navigate = useNavigate();
   const [fmsName, setFmsName] = useState('');
   const [steps, setSteps] = useState<FMSStep[]>([
-    { stepNo: 1, what: '', who: '', how: '', when: 1 },
+    { stepNo: 1, what: '', who: '', how: '', when: 0, whenUnit: 'days', whenDays: 0, whenHours: 0 },
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,7 +46,7 @@ export default function CreateFMS() {
 graph LR
     Start([Start])
     ${steps.map((step, idx) => `
-    Step${idx + 1}["Step ${step.stepNo}<br/>WHAT: ${step.what}<br/>WHO: ${step.who}<br/>HOW: ${step.how}<br/>WHEN: ${step.when} days"]
+    Step${idx + 1}["Step ${step.stepNo}<br/>WHAT: ${step.what}<br/>WHO: ${step.who}<br/>HOW: ${step.how}<br/>WHEN: ${step.whenUnit === 'days' ? `${step.whenDays} days` : step.whenUnit === 'hours' ? `${step.whenHours} hours` : `${step.whenDays}d ${step.whenHours}h`}"]
     `).join('\n')}
     End([End])
 
@@ -71,7 +71,7 @@ graph LR
   const addStep = () => {
     setSteps([
       ...steps,
-      { stepNo: steps.length + 1, what: '', who: '', how: '', when: 1 },
+      { stepNo: steps.length + 1, what: '', who: '', how: '', when: 0, whenUnit: 'days', whenDays: 0, whenHours: 0 },
     ]);
   };
 
@@ -88,6 +88,18 @@ graph LR
   const updateStep = (index: number, field: keyof FMSStep, value: string | number) => {
     const newSteps = [...steps];
     newSteps[index] = { ...newSteps[index], [field]: value };
+
+    if (field === 'whenUnit' || field === 'whenDays' || field === 'whenHours') {
+      const step = newSteps[index];
+      if (step.whenUnit === 'days') {
+        step.when = step.whenDays || 0;
+      } else if (step.whenUnit === 'hours') {
+        step.when = (step.whenHours || 0) / 24;
+      } else if (step.whenUnit === 'days+hours') {
+        step.when = (step.whenDays || 0) + ((step.whenHours || 0) / 24);
+      }
+    }
+
     setSteps(newSteps);
   };
 
@@ -225,18 +237,68 @@ graph LR
                     />
                   </div>
 
-                  <div>
+                  <div className="space-y-2">
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      WHEN (Duration in days)
+                      WHEN (Duration)
                     </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={step.when}
-                      onChange={(e) => updateStep(index, 'when', parseInt(e.target.value) || 1)}
+                    <select
+                      value={step.whenUnit}
+                      onChange={(e) => updateStep(index, 'whenUnit', e.target.value)}
                       className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all outline-none"
                       required
-                    />
+                    >
+                      <option value="days">Days</option>
+                      <option value="hours">Hours</option>
+                      <option value="days+hours">Days + Hours</option>
+                    </select>
+
+                    {step.whenUnit === 'days' && (
+                      <input
+                        type="number"
+                        min="0"
+                        value={step.whenDays || 0}
+                        onChange={(e) => updateStep(index, 'whenDays', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all outline-none"
+                        placeholder="Number of days"
+                        required
+                      />
+                    )}
+
+                    {step.whenUnit === 'hours' && (
+                      <input
+                        type="number"
+                        min="0"
+                        value={step.whenHours || 0}
+                        onChange={(e) => updateStep(index, 'whenHours', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all outline-none"
+                        placeholder="Number of hours"
+                        required
+                      />
+                    )}
+
+                    {step.whenUnit === 'days+hours' && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={step.whenDays || 0}
+                          onChange={(e) => updateStep(index, 'whenDays', parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all outline-none"
+                          placeholder="Days"
+                          required
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="23"
+                          value={step.whenHours || 0}
+                          onChange={(e) => updateStep(index, 'whenHours', parseInt(e.target.value) || 0)}
+                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-transparent transition-all outline-none"
+                          placeholder="Hours"
+                          required
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

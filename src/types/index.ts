@@ -4,6 +4,9 @@ export interface FMSStep {
   who: string;
   how: string;
   when: number;
+  whenUnit: 'days' | 'hours' | 'days+hours';
+  whenDays?: number;
+  whenHours?: number;
 }
 
 export interface FMSTemplate {
@@ -30,6 +33,10 @@ export interface ProjectTask {
   plannedDueDate: string;
   actualCompletedOn: string;
   status: 'Pending' | 'In Progress' | 'Done';
+  completedBy?: string;
+  isFirstStep?: boolean;
+  isOverdue?: boolean;
+  completionStatus?: 'on-time' | 'late';
 }
 
 export interface Project {
